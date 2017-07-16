@@ -5,11 +5,13 @@ import android.content.Intent;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
 import android.os.Environment;
+import android.os.Handler;
 import android.os.IBinder;
 import android.os.StrictMode;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -17,28 +19,49 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
 
 @SuppressWarnings("deprecation")
 public class CapPhoto extends Service {
     private SurfaceHolder sHolder;
     private Camera mCamera;
     private Camera.Parameters parameters;
+    // constant
+    public static final long NOTIFY_INTERVAL = 30000; // milliseconds
 
+    // run on another Thread to avoid crash
+    private Handler mHandler = new Handler();
+    // timer handling
+    private Timer mTimer = null;
 
     @Override
     public void onCreate() {
         super.onCreate();
         Log.d("CAM", "start");
+        //----------------------------------------------------------------------
+        // timer code - begin
+        //----------------------------------------------------------------------
+        // cancel if already existed
+        if (mTimer != null) {
+            mTimer.cancel();
+        } else {
+            // recreate new
+            mTimer = new Timer();
+        }
+        // schedule task
+        mTimer.scheduleAtFixedRate(new TimeDisplayTimerTask(), 0, NOTIFY_INTERVAL);
+        //----------------------------------------------------------------------
+        // timer code - end
+        //----------------------------------------------------------------------
         Log.d("______________marclog: ", "in CapPhoto now");
 
         if (android.os.Build.VERSION.SDK_INT > 9) {
-            StrictMode.ThreadPolicy policy =
-                    new StrictMode.ThreadPolicy.Builder().permitAll().build();
+            StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
             StrictMode.setThreadPolicy(policy);
         }
         Thread myThread = null;
-
-
     }
 
     @Override
@@ -144,7 +167,6 @@ public class CapPhoto extends Service {
                 camkapa(sHolder);
                 Log.d("______________marclog: ", "CapPhoto 029");
 
-
             } catch (FileNotFoundException e) {
                 Log.d("______________marclog: ", "CapPhoto 030");
                 Log.d("CAM", e.getMessage());
@@ -186,5 +208,84 @@ public class CapPhoto extends Service {
             Log.d("______________marclog: ", "call to Camera.open failed");
         }
         return c; // returns null if camera is unavailable
+    }
+
+    class TimeDisplayTimerTask extends TimerTask {
+
+        @Override
+        public void run() {
+            // run on another thread
+            mHandler.post(new Runnable() {
+
+                @Override
+                public void run() {
+                    Toast.makeText(getApplicationContext(), getDateTime(), Toast.LENGTH_LONG).show();
+                    if (Camera.getNumberOfCameras() >= 2) {
+                        Log.d("______________marclog: ", "num of cameras: " + String.valueOf(Camera.getNumberOfCameras()));
+                        //mCamera = Camera.open(Camera.CameraInfo.CAMERA_FACING_BACK);
+                        Log.d("______________marclog: ", "will call getCameraInstance now");
+                        mCamera = getCameraInstance();
+                        Log.d("______________marclog: ", "call to getCameraInstance completed");
+                    }
+                    Log.d("______________marclog: ", "CapPhoto 003");
+
+                    if (Camera.getNumberOfCameras() < 2) {
+
+                        mCamera = Camera.open();
+                    }
+                    Log.d("______________marclog: ", "CapPhoto 004");
+                    SurfaceView sv = new SurfaceView(getApplicationContext());
+                    Log.d("______________marclog: ", "CapPhoto 005");
+
+                    try {
+                        Log.d("______________marclog: ", "CapPhoto 006");
+                        mCamera.setPreviewDisplay(sv.getHolder());
+                        Log.d("______________marclog: ", "CapPhoto 007");
+                        parameters = mCamera.getParameters();
+                        mCamera.setParameters(parameters);
+                        Log.d("______________marclog: ", "CapPhoto 008");
+                        SurfaceTexture st = new SurfaceTexture(MODE_PRIVATE);
+                        Log.d("______________marclog: ", "CapPhoto 008b");
+                        mCamera.setPreviewTexture(st);
+                        Log.d("______________marclog: ", "CapPhoto 008c");
+                        try {
+                            mCamera.startPreview();
+                            Log.d("______________marclog: ", "CapPhoto 008d");
+                        } catch (Exception e) {
+                            Log.d("______________marclog: ", "CapPhoto 009_error: " + e);
+                        }
+                        //
+                        //CameraPreview mPreview = new CameraPreview(this, mCamera);
+                        //Log.d(TAG, "0000   main 002");
+                        //FrameLayout preview = (FrameLayout) findViewById(R.id.camera_preview);
+                        //Log.d(TAG, "0000   main 003");
+                        //preview.addView(mPreview);
+                        //Log.d(TAG, "0000   main 004");
+                        //
+                        Log.d("______________marclog: ", "CapPhoto 009");
+                        mCamera.takePicture(null, null, mCall);
+                        Log.d("______________marclog: ", "CapPhoto 010");
+                    } catch (IOException e) {
+                        Log.d("______________marclog: ", "CapPhoto 011");
+                        e.printStackTrace();
+                        Log.d("______________marclog: ", "CapPhoto 012");
+                    }
+
+                    Log.d("______________marclog: ", "CapPhoto 013");
+                    sHolder = sv.getHolder();
+                    Log.d("______________marclog: ", "CapPhoto 014");
+                    sHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+                    Log.d("______________marclog: ", "CapPhoto 015");
+
+                }
+            });
+        }
+
+        private String getDateTime() {
+            // get date time in custom format
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd - HH:mm:ss");
+            return sdf.format(new Date());
+        }
+
     }
 }

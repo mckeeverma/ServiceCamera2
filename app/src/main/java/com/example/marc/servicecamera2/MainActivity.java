@@ -32,13 +32,13 @@ public class MainActivity extends AppCompatActivity {
         service = new Intent(getBaseContext(), CapPhoto.class);
         Log.d("______________marclog: ", "just created service");
 
-        cal.add(Calendar.SECOND, 15);
+        //cal.add(Calendar.SECOND, 15);
         //TAKE PHOTO EVERY 15 SECONDS
-        PendingIntent pintent = PendingIntent.getService(this, 0, service, 0);
-        AlarmManager alarm = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        //PendingIntent pintent = PendingIntent.getService(this, 0, service, 0);
+        //AlarmManager alarm = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
 
-        alarm.setRepeating(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(),
-                60*60*1000, pintent);
+        //alarm.setRepeating(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(),
+        //        60*60*1000, pintent);
         Log.d("______________marclog: ", "about to call startService");
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
